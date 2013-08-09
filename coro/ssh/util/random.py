@@ -24,21 +24,21 @@
 # Consolidated location for getting random data.
 #
 
-import coro.ssl
+import coro.ssl.openssl
 import math
 
 def get_random_data(bytes):
     """get_random_data(bytes) -> str
     Gets <bytes> number of bytes of random data.
     """
-    return coro.ssl.random_bytes(bytes)
+    return coro.ssl.openssl.random_bytes(bytes)
 
 def get_random_number(bits):
     """get_random_number(bits) -> python long
     Return a random number.
     <bits> is the number of bits in the number.
     """
-    return coro.ssl.random_number(bits)
+    return coro.ssl.openssl.random_number(bits)
 
 def get_random_number_from_range(low, high):
     """get_random_number_from_range(low, high) -> python long
