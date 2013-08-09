@@ -108,6 +108,17 @@ cdef enum:
     EVENT_STATUS_FIRED
     EVENT_STATUS_ABORTED
 
+cdef class event_target:
+    cdef public int status
+    cdef public object target
+
+    def __cinit__ (self, target):
+        self.status = EVENT_STATUS_NEW
+        self.target = target
+
+    def __repr__ (self):
+        return '<event_target status=%r target=%r>' % (self.status, self.target)
+
 cdef class py_event:
 
     """Representation of a epoll event.
@@ -194,10 +205,11 @@ cdef public class queue_poller [ object queue_poller_object, type queue_poller_t
     cdef object set_wait_for (self, event_key ek):
         cdef coro me
         cdef unsigned flag = 0
+        cdef event_target et
         if self.event_map.has_key (ek):
             # Should be impossible to have KeyError due to previous line.
             et = self.event_map[ek]
-            raise SimultaneousError (the_scheduler._current, et, ek)
+            raise SimultaneousError (the_scheduler._current, et.target, ek)
         else:
 
             ek1 = event_key (EPOLLOUT, ek.fd)
@@ -210,23 +222,26 @@ cdef public class queue_poller [ object queue_poller_object, type queue_poller_t
                 flags = EPOLLET
 
             me = the_scheduler._current
-            target = me
-            self.event_map[ek] = target
+            et = event_target(me)
+            self.event_map[ek] = et
             self._register_event(ek, flags)
+            et.status = EVENT_STATUS_SUBMITTED
 
-            return target
+            return et
 
     def set_handler (self, object event, object handler, int flags=0, unsigned int fflags=0):
         return
 
     cdef notify_of_close (self, int fd):
+        cdef event_target et
         cdef coro co
         cdef event_key ek
 
         ek = event_key(EPOLLIN, fd)
         if self.event_map.has_key (ek):
-            co = self.event_map[ek]
+            et = self.event_map[ek]
             del self.event_map[ek]
+            co = et.target
 
             try:
                 co.__interrupt(ClosedError(the_scheduler._current))
@@ -235,7 +250,8 @@ cdef public class queue_poller [ object queue_poller_object, type queue_poller_t
 
         ek = event_key(EPOLLOUT, fd)
         if self.event_map.has_key (ek):
-            co = self.event_map[ek]
+            et = self.event_map[ek]
+            co = et.target
             del self.event_map[ek]
 
             try:
@@ -284,9 +300,17 @@ cdef public class queue_poller [ object queue_poller_object, type queue_poller_t
 
     cdef py_event _wait_for (self, int fd, int events):
         cdef event_key ek
+        cdef event_target et
         ek = event_key (events, fd)
         et = self.set_wait_for (ek)
-        return _YIELD()
+        try:
+            return _YIELD()
+        finally:
+            if et.status == EVENT_STATUS_SUBMITTED:
+                #print "was not fired (timed out?), discarding ..."
+                self.delete_event(fd, events)
+                if self.event_map.has_key(ek):
+                    del self.event_map[ek]
 
     def wait_for (self, int fd, int events):
         """Wait for an event.
@@ -318,6 +342,7 @@ cdef public class queue_poller [ object queue_poller_object, type queue_poller_t
         cdef int r, i
         cdef epoll_event * events
         cdef shrapnel_epoll_event new_e
+        cdef event_target et
         cdef coro co
         cdef event_key ek
         cdef py_event _py_event
@@ -352,14 +377,16 @@ cdef public class queue_poller [ object queue_poller_object, type queue_poller_t
                 ek = event_key (new_e.events, new_e.data.fd)
 
                 try:
-                    co = self.event_map[ek]
+                    et = self.event_map[ek]
+                    co = et.target
                 except KeyError:
                     pass
                     #W ('un-handled event: fd=%s events=%s\n' % (new_e.data.fd, new_e.events))
                 else:
+                    et.status = EVENT_STATUS_FIRED
                     if isinstance (co, coro):
                         co._schedule (_py_event)
                     else:
-                        # assumes kt.target is a callable object
+                        # assumes et.target is a callable object
                         _spawn(co, (_py_event,), {})
                     del self.event_map[ek]
