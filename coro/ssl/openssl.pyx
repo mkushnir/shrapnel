@@ -1287,6 +1287,13 @@ def random_bytes (int num):
     else:
         return result
 
+def random_number(int bits):
+    cdef BIGNUM *bn
+    bn = BN_new()
+    if BN_rand(bn, bits, 0, 0) == 0:
+        raise_ssl_error()
+    return long("%s" % (BN_bn2dec(bn),))
+
 class SSL_OP:
     ALL           = SSL_OP_ALL
     NO_SSLv2      = SSL_OP_NO_SSLv2

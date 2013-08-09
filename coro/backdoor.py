@@ -240,46 +240,46 @@ def serve (port=None, ip='', unix_path=None, welcome_message=None, global_dict=N
         thread = coro.spawn (client_class, conn, addr, welcome_message, global_dict)
         thread.set_name('backdoor session')
 
-import coro.ssh.transport.server
-import coro.ssh.connection.connect
-import coro.ssh.l4_transport.coro_socket_transport
-import coro.ssh.auth.userauth
-import coro.ssh.connection.interactive_session
-
-class ssh_repl (coro.ssh.connection.interactive_session.Interactive_Session_Server):
-
-    def __init__ (self, connection_service):
-        coro.ssh.connection.interactive_session.Interactive_Session_Server.__init__ (self, connection_service)
-        coro.spawn (self.go)
-
-    def go (self):
-        b = backdoor (self, line_separator='\n')
-        # this is to avoid getting the banner/copyright/etc mixed in with ssh client pty/x11 warnings
-        coro.sleep_relative (0.1)
-        b.read_eval_print_loop()
-        self.close()
-        coro.print_stderr ('closed ssh backdoor from: %r\n' % (self.transport.transport.peer,))
-
-# see coro/ssh/demo/backdoor.py for instructions on setting up an ssh backdoor server.
-class ssh_server:
-    def __init__ (self, port, addr, server_key, authenticators):
-        self.port = port
-        self.addr = addr
-        self.server_key = server_key
-        self.authenticators = authenticators
-        coro.spawn (self.serve)
-        
-    def serve (self):
-        serve (self.port, self.addr, client_class=self.new_connection)
-        
-    def new_connection (self, conn, addr, welcome_message, global_dict):
-        #debug = coro.ssh.util.debug.Debug()
-        #debug.level = coro.ssh.util.debug.DEBUG_3
-        transport = coro.ssh.l4_transport.coro_socket_transport.coro_socket_transport(sock=conn)
-        server = coro.ssh.transport.server.SSH_Server_Transport (self.server_key) #, debug=debug)
-        authenticator = coro.ssh.auth.userauth.Authenticator (server, self.authenticators)
-        server.connect (transport, authenticator)
-        service = coro.ssh.connection.connect.Connection_Service (server, ssh_repl)
+#import coro.ssh.transport.server
+#import coro.ssh.connection.connect
+#import coro.ssh.l4_transport.coro_socket_transport
+#import coro.ssh.auth.userauth
+#import coro.ssh.connection.interactive_session
+#
+#class ssh_repl (coro.ssh.connection.interactive_session.Interactive_Session_Server):
+#
+#    def __init__ (self, connection_service):
+#        coro.ssh.connection.interactive_session.Interactive_Session_Server.__init__ (self, connection_service)
+#        coro.spawn (self.go)
+#
+#    def go (self):
+#        b = backdoor (self, line_separator='\n')
+#        # this is to avoid getting the banner/copyright/etc mixed in with ssh client pty/x11 warnings
+#        coro.sleep_relative (0.1)
+#        b.read_eval_print_loop()
+#        self.close()
+#        coro.print_stderr ('closed ssh backdoor from: %r\n' % (self.transport.transport.peer,))
+#
+## see coro/ssh/demo/backdoor.py for instructions on setting up an ssh backdoor server.
+#class ssh_server:
+#    def __init__ (self, port, addr, server_key, authenticators):
+#        self.port = port
+#        self.addr = addr
+#        self.server_key = server_key
+#        self.authenticators = authenticators
+#        coro.spawn (self.serve)
+#        
+#    def serve (self):
+#        serve (self.port, self.addr, client_class=self.new_connection)
+#        
+#    def new_connection (self, conn, addr, welcome_message, global_dict):
+#        #debug = coro.ssh.util.debug.Debug()
+#        #debug.level = coro.ssh.util.debug.DEBUG_3
+#        transport = coro.ssh.l4_transport.coro_socket_transport.coro_socket_transport(sock=conn)
+#        server = coro.ssh.transport.server.SSH_Server_Transport (self.server_key) #, debug=debug)
+#        authenticator = coro.ssh.auth.userauth.Authenticator (server, self.authenticators)
+#        server.connect (transport, authenticator)
+#        service = coro.ssh.connection.connect.Connection_Service (server, ssh_repl)
 
 if __name__ == '__main__':
     thread = coro.spawn (serve, welcome_message='Testing backdoor.py')

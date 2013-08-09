@@ -24,25 +24,21 @@
 # Consolidated location for getting random data.
 #
 
-import Crypto.Util.number
-import Crypto.Util.randpool
+import coro.ssl
 import math
-
-# XXX: Should we stir the pool occasionally?
-random_pool = Crypto.Util.randpool.RandomPool()
 
 def get_random_data(bytes):
     """get_random_data(bytes) -> str
     Gets <bytes> number of bytes of random data.
     """
-    return random_pool.get_bytes(bytes)
+    return coro.ssl.random_bytes(bytes)
 
 def get_random_number(bits):
     """get_random_number(bits) -> python long
     Return a random number.
     <bits> is the number of bits in the number.
     """
-    return Crypto.Util.number.getRandomNumber(bits, random_pool.get_bytes)
+    return coro.ssl.random_number(bits)
 
 def get_random_number_from_range(low, high):
     """get_random_number_from_range(low, high) -> python long
