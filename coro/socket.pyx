@@ -34,7 +34,7 @@ DEF KQUEUE = (UNAME_SYSNAME == "FreeBSD" or UNAME_SYSNAME == "Darwin")
 import socket as __socketmodule
 
 from cpython.int cimport PyInt_Check
-from cpython.bytes cimport PyBytes_Size
+from cpython.bytes cimport PyBytes_Size, PyBytes_AsString
 from cpython.tuple cimport PyTuple_New, PyTuple_SET_ITEM, PyTuple_GET_ITEM
 
 from libc cimport errno
@@ -234,7 +234,7 @@ cdef public class sock [ object sock_object, type sock_type ]:
                 return flag
         else:
             s = PyBytes_FromStringAndSize (NULL, buflen)
-            r = getsockopt (self.fd, level, optname, <void*>s, &buflen)
+            r = getsockopt (self.fd, level, optname, <void*>PyBytes_AsString (s), &buflen)
             if r == -1:
                 raise_oserror()
             else:
@@ -256,7 +256,7 @@ cdef public class sock [ object sock_object, type sock_type ]:
             r = setsockopt (self.fd, level, optname, <void*>&flag, sizeof (flag))
         else:
             optlen = PyBytes_Size (value) # does typecheck
-            r = setsockopt (self.fd, level, optname, <void*>value, optlen)
+            r = setsockopt (self.fd, level, optname, <void*>PyBytes_AsString (value), optlen)
         if r == -1:
             raise_oserror()
 
@@ -1062,7 +1062,7 @@ cdef public class sock [ object sock_object, type sock_type ]:
         cdef coro me
         cdef list result
         count = 0
-        result = PyList_New(max)
+        result = []
         if max == 0:
             upper_limit = 0x7ffffffe
         else:
@@ -1075,19 +1075,16 @@ cdef public class sock [ object sock_object, type sock_type ]:
             r = accept (self.fd, <sockaddr *>&sa, &addr_len)
             if r == -1:
                 if errno.errno == errno.EAGAIN:
-                    return result[:count]
+                    return result
                 elif errno.errno == errno.ECONNABORTED:
                     pass
                 else:
                     raise_oserror()
             else:
-                element = (sock (self.domain, fd=r),
-                           self.unparse_address (&sa, addr_len)
-                          )
-                if max == 0:
-                    result.append (element)
-                else:
-                    result[count] = element
+                result.append ((
+                    sock (self.domain, fd=r),
+                    self.unparse_address (&sa, addr_len)
+                ))
                 count = count + 1
         return result
 

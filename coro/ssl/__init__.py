@@ -2,7 +2,6 @@
 
 import coro
 from coro.ssl import openssl
-import socket
 
 ssl_op_map = {
     "sslv2":openssl.SSL_OP.NO_SSLv3|openssl.SSL_OP.NO_TLSv1,
@@ -33,7 +32,7 @@ def new_ctx (cert=None, chain=(), key=None, proto=None, ciphers=None, dhparam=No
 
 class sock (coro.sock):
 
-    def __init__ (self, ctx, fd=-1, verify=False, domain=socket.AF_INET):
+    def __init__ (self, ctx, fd=-1, verify=False, domain=coro.AF.INET):
         coro.sock.__init__ (self, fd=fd, domain=domain)
         self.ctx = ctx
         # Note: this uses SSLv23_method(), which allows it to accept V2 client hello
@@ -126,7 +125,11 @@ class sock (coro.sock):
         return _sum
 
     def shutdown (self, how=None):
-        return self._non_blocking_retry (self.ssl.shutdown)
+        try:
+            return self._non_blocking_retry (self.ssl.shutdown)
+        except OSError:
+            # common with an impolite disconnect
+            pass
 
     def close (self):
         try:
