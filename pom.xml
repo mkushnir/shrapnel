@@ -3,7 +3,7 @@
 
     <groupId>com.llnw.edge.query</groupId>
     <artifactId>shrapnel</artifactId>
-    <version>1.0.3-000_p01</version>
+    <version>1.0.3-000_p02</version>
     <packaging>pom</packaging>
     <name>shrapnel</name>
     <url>http://edge.query.llnw.com</url>
