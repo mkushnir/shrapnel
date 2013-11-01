@@ -4,6 +4,7 @@
 import sys
 import glob
 import os
+import subprocess
 
 from distribute_setup import use_setuptools
 use_setuptools()
@@ -46,12 +47,41 @@ def check_lio():
     status = os.system('test/build/test_lio')
     return exit_ok(status)
 
+_glibc = -1
+_glibc_minor = -1
+def check_libc():
+    global _glibc, _glibc_minor
+    if sys.platform.startswith('linux'):
+        f = open('main.c', 'w')
+        f.write('''/**/
+#include <stdio.h>
+#include <features.h>
+int main(void) { printf("%d %d", __GLIBC__, __GLIBC_MINOR__); return 0; }
+''')
+        f.close()
+        subprocess.call([os.getenv('CC', 'cc'), 'main.c'])
+        if os.path.isfile('a.out'):
+            p = subprocess.Popen(['./a.out'], stdout=subprocess.PIPE)
+            stdoutdata, stderrdata = p.communicate()
+            if stdoutdata:
+                pieces = stdoutdata.split()
+                _glibc = int(pieces[0])
+                _glibc_minor = int(pieces[1])
+        for i in ('main.c', 'a.out'):
+            try:
+                os.unlink(i)
+            except:
+                pass
+
+check_libc()
 compile_time_env = {
     'COMPILE_LIO': check_lio(),
     'COMPILE_NETDEV' : False,
     'COMPILE_LZO' : False,
     'COMPILE_LZ4' : False,
     'CORO_DEBUG': False,
+    '__GLIBC__': _glibc,
+    '__GLIBC_MINOR__': _glibc_minor,
     }
 
 #--------------------------------------------------------------------------------
@@ -100,7 +130,7 @@ OpenSSL_Extension = Extension (
 
 setup (
     name='coro',
-    version='1.0.3-000-p02',
+    version='1.0.3-000-p03',
     description='IronPort Coroutine/Threading Library',
     author='Sam Rushing, Eric Huss, IronPort Engineering',
     author_email='sam-coro@rushing.nightmare.com',
@@ -159,6 +189,7 @@ setup (
             'coro.clocks.tsc_time',
             ['coro/clocks/tsc_time.pyx', ],
             pyrex_include_dirs=[os.path.join(include_dir, 'pyrex')],
+            pyrex_compile_time_env = compile_time_env,
             include_dirs=[
                 os.path.join(include_dir, '.'),
                 os.path.join(include_dir, 'include'),

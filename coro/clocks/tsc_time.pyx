@@ -216,8 +216,9 @@ cdef extern from "sys/sysctl.h":
 
 IF UNAME_SYSNAME == "Linux":
     DEF _GNU_SOURCE=1
-    cdef extern from "sched.h":
-       int sched_getcpu()
+    IF (__GLIBC__, __GLIBC_MINOR__) >= (2, 6):
+        cdef extern from "sched.h":
+           int sched_getcpu()
 
 # This is a pointer so that the time shifting functions can replace it.
 cdef uint64_t (*c_rdtsc) ()
@@ -247,7 +248,10 @@ cdef uint64_t get_ticks_per_sec() except -1:
     cdef size_t buffer_size
 
     IF UNAME_SYSNAME == "Linux":
-        current_cpu_number = sched_getcpu()
+        IF (__GLIBC__, __GLIBC_MINOR__) >= (2, 6):
+            current_cpu_number = sched_getcpu()
+        ELSE:
+            current_cpu_number = 0
         f = open('/proc/cpuinfo')
         try:
             lines = f.readlines()
