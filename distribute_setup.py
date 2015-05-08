@@ -19,6 +19,7 @@ import time
 import fnmatch
 import tempfile
 import tarfile
+import zipfile
 from distutils import log
 
 try:
@@ -46,8 +47,9 @@ except ImportError:
             args = [quote(arg) for arg in args]
         return os.spawnl(os.P_WAIT, sys.executable, *args) == 0
 
-DEFAULT_VERSION = "0.6.26"
-DEFAULT_URL = "http://pypi.python.org/packages/source/d/distribute/"
+DEFAULT_VERSION = "0.7.3"
+# https://pypi.python.org/packages/source/d/distribute/distribute-0.7.3.zip
+DEFAULT_URL = "https://pypi.python.org/packages/source/d/distribute/"
 SETUPTOOLS_FAKED_VERSION = "0.6c11"
 
 SETUPTOOLS_PKG_INFO = """\
@@ -70,8 +72,9 @@ def _install(tarball, install_args=()):
     old_wd = os.getcwd()
     try:
         os.chdir(tmpdir)
-        tar = tarfile.open(tarball)
-        _extractall(tar)
+        tar = zipfile.ZipFile(tarball)
+        #_extractall(tar)
+        tar.extractall()
         tar.close()
 
         # going in the directory
@@ -95,8 +98,9 @@ def _build_egg(egg, tarball, to_dir):
     old_wd = os.getcwd()
     try:
         os.chdir(tmpdir)
-        tar = tarfile.open(tarball)
-        _extractall(tar)
+        tar = zipfile.ZipFile(tarball)
+        #_extractall(tar)
+        tar.extractall()
         tar.close()
 
         # going in the directory
@@ -183,7 +187,8 @@ def download_setuptools(version=DEFAULT_VERSION, download_base=DEFAULT_URL,
         from urllib.request import urlopen
     except ImportError:
         from urllib2 import urlopen
-    tgz_name = "distribute-%s.tar.gz" % version
+    #tgz_name = "distribute-%s.tar.gz" % version
+    tgz_name = "distribute-%s.zip" % version
     url = download_base + tgz_name
     saveto = os.path.join(to_dir, tgz_name)
     src = dst = None
